@@ -58,20 +58,18 @@ class App(ttk.Frame):
         header_frame.pack(fill=X, pady=(0, 20))
         
         ttk.Label(
-            header_frame, 
-            text="MC World Converter", 
+            header_frame,
+            text="MC World Converter",
             font=("Helvetica", 24, "bold"),
-            bootstyle=PRIMARY
         ).pack(side=LEFT)
         
         ttk.Label(
-            header_frame, 
-            text="v0.1.0", 
-            bootstyle="secondary"
+            header_frame,
+            text="v0.1.0",
         ).pack(side=LEFT, padx=10, pady=(12, 0))
 
         # --- Main Content (Tabs) ---
-        self.notebook = ttk.Notebook(self, bootstyle=PRIMARY)
+        self.notebook = ttk.Notebook(self)
         self.notebook.pack(fill=BOTH, expand=YES, pady=(0, 20))
 
         # Tab 1: Single Mode
@@ -86,16 +84,16 @@ class App(ttk.Frame):
 
         # --- Settings/Log Area ---
         # Shared Log Area at bottom
-        log_frame = ttk.LabelFrame(self, text="系统日志 (System Log)", bootstyle=INFO)
+        log_frame = ttk.LabelFrame(self, text="系统日志 (System Log)")
         log_frame.pack(fill=BOTH, expand=YES)
         
-        self.log_text = ScrolledText(log_frame, height=8, autohide=True, bootstyle="round")
+        self.log_text = ScrolledText(log_frame, height=8, autohide=True)
         self.log_text.pack(fill=BOTH, expand=YES)
 
         # Status Bar
         status_bar = ttk.Frame(self)
         status_bar.pack(fill=X, pady=(10, 0))
-        ttk.Label(status_bar, textvariable=self.status_var, bootstyle=SECONDARY).pack(side=LEFT)
+        ttk.Label(status_bar, textvariable=self.status_var).pack(side=LEFT)
         
         # REFACTOR: Move Options Up
         # Removing Notebook for a second to inject Options below Header
@@ -105,7 +103,7 @@ class App(ttk.Frame):
         self.notebook.pack(fill=BOTH, expand=YES, pady=10)
 
     def _setup_global_options(self) -> None:
-        opt_container = ttk.LabelFrame(self, text="转换设置 (Settings)", bootstyle=PRIMARY)
+        opt_container = ttk.LabelFrame(self, text="转换设置 (Settings)")
         opt_container.pack(fill=X)
 
         # Grid layout for options
@@ -113,7 +111,7 @@ class App(ttk.Frame):
         opt_container.columnconfigure(3, weight=1)
 
         # Row 0: Direction
-        ttk.Label(opt_container, text="转换方向 (Direction):", bootstyle=INFO).grid(row=0, column=0, sticky=E, padx=5, pady=5)
+        ttk.Label(opt_container, text="转换方向 (Direction):").grid(row=0, column=0, sticky=E, padx=5, pady=5)
         
         dir_frame = ttk.Frame(opt_container)
         dir_frame.grid(row=0, column=1, sticky=W, padx=5)
@@ -127,24 +125,22 @@ class App(ttk.Frame):
         
         for text, val in modes:
             ttk.Radiobutton(
-                dir_frame, 
-                text=text, 
-                value=val, 
+                dir_frame,
+                text=text,
+                value=val,
                 variable=self.direction_var,
-                bootstyle="info-toolbutton"
             ).pack(side=LEFT, padx=2)
 
         # Row 0 (Right): Version
-        ttk.Label(opt_container, text="目标版本 (Target Ver):", bootstyle=INFO).grid(row=0, column=2, sticky=E, padx=5, pady=5)
-        self.version_combo = ttk.Combobox(opt_container, textvariable=self.version_var, state="readonly", width=15, bootstyle=INFO)
+        ttk.Label(opt_container, text="目标版本 (Target Ver):").grid(row=0, column=2, sticky=E, padx=5, pady=5)
+        self.version_combo = ttk.Combobox(opt_container, textvariable=self.version_var, state="readonly", width=15)
         self.version_combo.grid(row=0, column=3, sticky=W, padx=5)
 
         # Row 1: Extra Options
         ttk.Checkbutton(
-            opt_container, 
-            text="强制修复 (Force Repair / Re-save chunks)", 
+            opt_container,
+            text="强制修复 (Force Repair / Re-save chunks)",
             variable=self.repair_var,
-            bootstyle="warning-round-toggle"
         ).grid(row=1, column=1, columnspan=3, sticky=W, padx=7, pady=10)
 
     def _setup_single_tab(self) -> None:
@@ -154,7 +150,7 @@ class App(ttk.Frame):
         input_frame.pack(fill=X, pady=(5, 15))
         
         ttk.Entry(input_frame, textvariable=self.input_var).pack(side=LEFT, fill=X, expand=YES, padx=(0, 5))
-        ttk.Button(input_frame, text="📁 浏览 (Browse)", command=self._pick_input, bootstyle=SECONDARY).pack(side=LEFT)
+        ttk.Button(input_frame, text="📁 浏览 (Browse)", command=self._pick_input).pack(side=LEFT)
 
         # Output
         ttk.Label(self.tab_single, text="输出位置 (Output Folder):").pack(anchor=W)
@@ -162,15 +158,14 @@ class App(ttk.Frame):
         output_frame.pack(fill=X, pady=(5, 20))
         
         ttk.Entry(output_frame, textvariable=self.output_var).pack(side=LEFT, fill=X, expand=YES, padx=(0, 5))
-        ttk.Button(output_frame, text="📁 浏览 (Browse)", command=self._pick_output, bootstyle=SECONDARY).pack(side=LEFT)
+        ttk.Button(output_frame, text="📁 浏览 (Browse)", command=self._pick_output).pack(side=LEFT)
 
         # Action
         self.btn_convert_single = ttk.Button(
-            self.tab_single, 
-            text="🚀 开始转换 (Start Conversion)", 
+            self.tab_single,
+            text="🚀 开始转换 (Start Conversion)",
             command=self._start_single_conversion,
-            bootstyle="success-outline",
-            width=30
+            width=30,
         )
         self.btn_convert_single.pack(pady=10)
 
@@ -185,9 +180,9 @@ class App(ttk.Frame):
         toolbar = ttk.Frame(list_frame)
         toolbar.pack(side=LEFT, fill=Y, padx=5)
         
-        ttk.Button(toolbar, text="➕ 添加", command=self._add_batch_input, width=8, bootstyle=SUCCESS).pack(pady=2)
-        ttk.Button(toolbar, text="➖ 移除", command=self._remove_batch_input, width=8, bootstyle=DANGER).pack(pady=2)
-        ttk.Button(toolbar, text="🗑️ 清空", command=self._clear_batch_inputs, width=8, bootstyle=SECONDARY).pack(pady=2)
+        ttk.Button(toolbar, text="➕ 添加", command=self._add_batch_input, width=8).pack(pady=2)
+        ttk.Button(toolbar, text="➖ 移除", command=self._remove_batch_input, width=8).pack(pady=2)
+        ttk.Button(toolbar, text="🗑️ 清空", command=self._clear_batch_inputs, width=8).pack(pady=2)
 
         # Output Root
         ttk.Label(self.tab_batch, text="输出根目录 (Output Root Directory):").pack(anchor=W)
@@ -195,15 +190,14 @@ class App(ttk.Frame):
         out_frame.pack(fill=X, pady=5)
         
         ttk.Entry(out_frame, textvariable=self.batch_output_var).pack(side=LEFT, fill=X, expand=YES, padx=(0, 5))
-        ttk.Button(out_frame, text="📁 浏览", command=self._pick_batch_output, bootstyle=SECONDARY).pack(side=LEFT)
+        ttk.Button(out_frame, text="📁 浏览", command=self._pick_batch_output).pack(side=LEFT)
 
         # Action
         self.btn_convert_batch = ttk.Button(
-            self.tab_batch, 
-            text="🚀 批量转换 (Batch Convert)", 
+            self.tab_batch,
+            text="🚀 批量转换 (Batch Convert)",
             command=self._start_batch_conversion,
-            bootstyle="success-outline",
-            width=30
+            width=30,
         )
         self.btn_convert_batch.pack(pady=15)
 
