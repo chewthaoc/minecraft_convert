@@ -4,7 +4,12 @@ import queue
 import threading
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog
+
+import ttkbootstrap as ttk
+from ttkbootstrap.constants import *
+from ttkbootstrap.dialogs import Messagebox
+from ttkbootstrap.scrolled import ScrolledText
 
 from .converter import (
     ConversionResult,
@@ -15,218 +20,278 @@ from .converter import (
 
 
 class App(ttk.Frame):
-    def __init__(self, master: tk.Tk) -> None:
-        super().__init__(master)
+    def __init__(self, master: ttk.Window) -> None:
+        super().__init__(master, padding=20)
+        self.pack(fill=BOTH, expand=YES)
+        
+        # Configuration
         self.master = master
-        self.master.title("Minecraft 存档转换工具")
-        self.master.minsize(760, 520)
-
+        self.master.title("Minecraft 存档转换工具 (Pro)")
+        self.master.minsize(800, 600)
+        
+        # Variables
         self.input_var = tk.StringVar()
         self.output_var = tk.StringVar()
         self.direction_var = tk.StringVar(value="bedrock-to-java")
         self.version_var = tk.StringVar(value="最新")
-        self.batch_var = tk.BooleanVar(value=False)
+        self.batch_output_var = tk.StringVar()
         self.repair_var = tk.BooleanVar(value=False)
-        self.status_var = tk.StringVar(value="就绪")
-
+        self.status_var = tk.StringVar(value="就绪 | Ready")
+        
+        # Internal State
         self._log_queue: queue.Queue[str] = queue.Queue()
         self._result_queue: queue.Queue[ConversionResult] = queue.Queue()
         self._worker: threading.Thread | None = None
+        self._input_paths: list[str] = []
 
-        self._build_ui()
+        # UI Construction
+        self._setup_ui()
+        
+        # Logic Init
         self.direction_var.trace_add("write", lambda *_: self._refresh_versions())
         self._refresh_versions()
         self.after(100, self._poll_queues)
 
-    def _build_ui(self) -> None:
-        padding = {"padx": 12, "pady": 8}
+    def _setup_ui(self) -> None:
+        # --- Header ---
+        header_frame = ttk.Frame(self)
+        header_frame.pack(fill=X, pady=(0, 20))
+        
+        ttk.Label(
+            header_frame, 
+            text="MC World Converter", 
+            font=("Helvetica", 24, "bold"),
+            bootstyle=PRIMARY
+        ).pack(side=LEFT)
+        
+        ttk.Label(
+            header_frame, 
+            text="v0.1.0", 
+            bootstyle="secondary"
+        ).pack(side=LEFT, padx=10, pady=(12, 0))
 
-        self.single_input_frame = ttk.LabelFrame(self, text="输入存档")
-        self.single_input_frame.grid(row=0, column=0, sticky="ew", **padding)
-        self.single_input_frame.columnconfigure(1, weight=1)
+        # --- Main Content (Tabs) ---
+        self.notebook = ttk.Notebook(self, bootstyle=PRIMARY)
+        self.notebook.pack(fill=BOTH, expand=YES, pady=(0, 20))
 
-        ttk.Label(self.single_input_frame, text="存档文件夹").grid(
-            row=0, column=0, sticky="w"
-        )
-        ttk.Entry(self.single_input_frame, textvariable=self.input_var).grid(
-            row=0, column=1, sticky="ew", padx=(8, 8)
-        )
-        ttk.Button(
-            self.single_input_frame, text="浏览...", command=self._pick_input
-        ).grid(
-            row=0, column=2, sticky="e"
-        )
+        # Tab 1: Single Mode
+        self.tab_single = ttk.Frame(self.notebook, padding=15)
+        self.notebook.add(self.tab_single, text=" 单个模式 (Single) ")
+        self._setup_single_tab()
 
-        self.batch_input_frame = ttk.LabelFrame(self, text="批量输入")
-        self.batch_input_frame.grid(row=0, column=0, sticky="ew", **padding)
-        self.batch_input_frame.columnconfigure(0, weight=1)
+        # Tab 2: Batch Mode
+        self.tab_batch = ttk.Frame(self.notebook, padding=15)
+        self.notebook.add(self.tab_batch, text=" 批量模式 (Batch) ")
+        self._setup_batch_tab()
 
-        self.input_listbox = tk.Listbox(
-            self.batch_input_frame, height=5, selectmode="extended"
-        )
-        self.input_listbox.grid(row=0, column=0, sticky="ew")
+        # --- Settings/Log Area ---
+        # Shared Log Area at bottom
+        log_frame = ttk.LabelFrame(self, text="系统日志 (System Log)", padding=10, bootstyle=INFO)
+        log_frame.pack(fill=BOTH, expand=YES)
+        
+        self.log_text = ScrolledText(log_frame, height=8, autohide=True, bootstyle="round")
+        self.log_text.pack(fill=BOTH, expand=YES)
 
-        batch_button_frame = ttk.Frame(self.batch_input_frame)
-        batch_button_frame.grid(row=0, column=1, sticky="ns", padx=(8, 0))
-        ttk.Button(batch_button_frame, text="添加...", command=self._add_input).grid(
-            row=0, column=0, sticky="ew", pady=(0, 4)
-        )
-        ttk.Button(
-            batch_button_frame, text="移除选中", command=self._remove_selected
-        ).grid(row=1, column=0, sticky="ew", pady=(0, 4))
-        ttk.Button(batch_button_frame, text="清空", command=self._clear_inputs).grid(
-            row=2, column=0, sticky="ew"
-        )
+        # Status Bar
+        status_bar = ttk.Frame(self)
+        status_bar.pack(fill=X, pady=(10, 0))
+        ttk.Label(status_bar, textvariable=self.status_var, bootstyle=SECONDARY).pack(side=LEFT)
+        
+        # REFACTOR: Move Options Up
+        # Removing Notebook for a second to inject Options below Header
+        self.notebook.pack_forget()
+        
+        self._setup_global_options()
+        self.notebook.pack(fill=BOTH, expand=YES, pady=10)
 
-        self.batch_input_frame.grid_remove()
+    def _setup_global_options(self) -> None:
+        opt_container = ttk.LabelFrame(self, text="转换设置 (Settings)", padding=15, bootstyle=PRIMARY)
+        opt_container.pack(fill=X)
 
-        output_frame = ttk.LabelFrame(self, text="输出存档")
-        output_frame.grid(row=1, column=0, sticky="ew", **padding)
-        output_frame.columnconfigure(1, weight=1)
+        # Grid layout for options
+        opt_container.columnconfigure(1, weight=1)
+        opt_container.columnconfigure(3, weight=1)
 
-        self.output_label = ttk.Label(output_frame, text="目标文件夹")
-        self.output_label.grid(row=0, column=0, sticky="w")
-        ttk.Entry(output_frame, textvariable=self.output_var).grid(
-            row=0, column=1, sticky="ew", padx=(8, 8)
-        )
-        ttk.Button(output_frame, text="浏览...", command=self._pick_output).grid(
-            row=0, column=2, sticky="e"
-        )
+        # Row 0: Direction
+        ttk.Label(opt_container, text="转换方向 (Direction):", bootstyle=INFO).grid(row=0, column=0, sticky=E, padx=5, pady=5)
+        
+        dir_frame = ttk.Frame(opt_container)
+        dir_frame.grid(row=0, column=1, sticky=W, padx=5)
+        
+        modes = [
+            ("Bedrock → Java", "bedrock-to-java"),
+            ("Java → Bedrock", "java-to-bedrock"),
+            ("Java → Java", "java-to-java"),
+            ("Bedrock → Bedrock", "bedrock-to-bedrock")
+        ]
+        
+        for text, val in modes:
+            ttk.Radiobutton(
+                dir_frame, 
+                text=text, 
+                value=val, 
+                variable=self.direction_var,
+                bootstyle="info-toolbutton"
+            ).pack(side=LEFT, padx=2)
 
-        option_frame = ttk.LabelFrame(self, text="转换方向")
-        option_frame.grid(row=2, column=0, sticky="ew", **padding)
-        option_frame.columnconfigure(1, weight=1)
+        # Row 0 (Right): Version
+        ttk.Label(opt_container, text="目标版本 (Target Ver):", bootstyle=INFO).grid(row=0, column=2, sticky=E, padx=5, pady=5)
+        self.version_combo = ttk.Combobox(opt_container, textvariable=self.version_var, state="readonly", width=15, bootstyle=INFO)
+        self.version_combo.grid(row=0, column=3, sticky=W, padx=5)
 
-        ttk.Radiobutton(
-            option_frame,
-            text="Bedrock → Java",
-            value="bedrock-to-java",
-            variable=self.direction_var,
-        ).grid(row=0, column=0, sticky="w", padx=(0, 24))
-        ttk.Radiobutton(
-            option_frame,
-            text="Java → Bedrock",
-            value="java-to-bedrock",
-            variable=self.direction_var,
-        ).grid(row=0, column=1, sticky="w")
-
-        ttk.Radiobutton(
-            option_frame,
-            text="Java → Java",
-            value="java-to-java",
-            variable=self.direction_var,
-        ).grid(row=1, column=0, sticky="w", padx=(0, 24))
-        ttk.Radiobutton(
-            option_frame,
-            text="Bedrock → Bedrock",
-            value="bedrock-to-bedrock",
-            variable=self.direction_var,
-        ).grid(row=1, column=1, sticky="w")
-
-        ttk.Label(option_frame, text="目标版本").grid(row=2, column=0, sticky="w")
-        self.version_combo = ttk.Combobox(
-            option_frame, textvariable=self.version_var, state="readonly"
-        )
-        self.version_combo.grid(row=2, column=1, sticky="w")
-
+        # Row 1: Extra Options
         ttk.Checkbutton(
-            option_frame,
-            text="批量处理",
-            variable=self.batch_var,
-            command=self._toggle_batch,
-        ).grid(row=3, column=0, sticky="w")
-        ttk.Checkbutton(
-            option_frame,
-            text="强制修复(重新保存)",
+            opt_container, 
+            text="强制修复 (Force Repair / Re-save chunks)", 
             variable=self.repair_var,
-        ).grid(row=3, column=1, sticky="w")
+            bootstyle="warning-round-toggle"
+        ).grid(row=1, column=1, columnspan=3, sticky=W, padx=7, pady=10)
 
-        action_frame = ttk.Frame(self)
-        action_frame.grid(row=3, column=0, sticky="ew", **padding)
-        action_frame.columnconfigure(0, weight=1)
+    def _setup_single_tab(self) -> None:
+        # Input
+        ttk.Label(self.tab_single, text="输入存档 (Input World):").pack(anchor=W)
+        input_frame = ttk.Frame(self.tab_single)
+        input_frame.pack(fill=X, pady=(5, 15))
+        
+        ttk.Entry(input_frame, textvariable=self.input_var).pack(side=LEFT, fill=X, expand=YES, padx=(0, 5))
+        ttk.Button(input_frame, text="📁 浏览 (Browse)", command=self._pick_input, bootstyle=SECONDARY).pack(side=LEFT)
 
-        self.convert_button = ttk.Button(
-            action_frame, text="开始转换", command=self._start_conversion
+        # Output
+        ttk.Label(self.tab_single, text="输出位置 (Output Folder):").pack(anchor=W)
+        output_frame = ttk.Frame(self.tab_single)
+        output_frame.pack(fill=X, pady=(5, 20))
+        
+        ttk.Entry(output_frame, textvariable=self.output_var).pack(side=LEFT, fill=X, expand=YES, padx=(0, 5))
+        ttk.Button(output_frame, text="📁 浏览 (Browse)", command=self._pick_output, bootstyle=SECONDARY).pack(side=LEFT)
+
+        # Action
+        self.btn_convert_single = ttk.Button(
+            self.tab_single, 
+            text="🚀 开始转换 (Start Conversion)", 
+            command=self._start_single_conversion,
+            bootstyle="success-outline",
+            width=30
         )
-        self.convert_button.grid(row=0, column=0, sticky="w")
+        self.btn_convert_single.pack(pady=10)
 
-        ttk.Label(action_frame, textvariable=self.status_var).grid(
-            row=0, column=1, sticky="e"
+    def _setup_batch_tab(self) -> None:
+        # List Area
+        list_frame = ttk.Frame(self.tab_batch)
+        list_frame.pack(fill=BOTH, expand=YES, pady=(0, 10))
+        
+        self.batch_list = tk.Listbox(list_frame, height=5, selectmode="extended", borderwidth=1, relief="solid")
+        self.batch_list.pack(side=LEFT, fill=BOTH, expand=YES)
+        
+        toolbar = ttk.Frame(list_frame)
+        toolbar.pack(side=LEFT, fill=Y, padx=5)
+        
+        ttk.Button(toolbar, text="➕ 添加", command=self._add_batch_input, width=8, bootstyle=SUCCESS).pack(pady=2)
+        ttk.Button(toolbar, text="➖ 移除", command=self._remove_batch_input, width=8, bootstyle=DANGER).pack(pady=2)
+        ttk.Button(toolbar, text="🗑️ 清空", command=self._clear_batch_inputs, width=8, bootstyle=SECONDARY).pack(pady=2)
+
+        # Output Root
+        ttk.Label(self.tab_batch, text="输出根目录 (Output Root Directory):").pack(anchor=W)
+        out_frame = ttk.Frame(self.tab_batch)
+        out_frame.pack(fill=X, pady=5)
+        
+        ttk.Entry(out_frame, textvariable=self.batch_output_var).pack(side=LEFT, fill=X, expand=YES, padx=(0, 5))
+        ttk.Button(out_frame, text="📁 浏览", command=self._pick_batch_output, bootstyle=SECONDARY).pack(side=LEFT)
+
+        # Action
+        self.btn_convert_batch = ttk.Button(
+            self.tab_batch, 
+            text="🚀 批量转换 (Batch Convert)", 
+            command=self._start_batch_conversion,
+            bootstyle="success-outline",
+            width=30
         )
-
-        log_frame = ttk.LabelFrame(self, text="日志")
-        log_frame.grid(row=4, column=0, sticky="nsew", **padding)
-        log_frame.rowconfigure(0, weight=1)
-        log_frame.columnconfigure(0, weight=1)
-
-        self.log_text = tk.Text(log_frame, height=14, wrap="word")
-        self.log_text.grid(row=0, column=0, sticky="nsew")
-        self.log_text.configure(state="disabled")
-
-        scrollbar = ttk.Scrollbar(log_frame, command=self.log_text.yview)
-        scrollbar.grid(row=0, column=1, sticky="ns")
-        self.log_text["yscrollcommand"] = scrollbar.set
-
-        self.rowconfigure(4, weight=1)
-        self.columnconfigure(0, weight=1)
+        self.btn_convert_batch.pack(pady=15)
 
     def _pick_input(self) -> None:
-        folder = filedialog.askdirectory(title="选择输入存档文件夹")
-        if folder:
-            self.input_var.set(folder)
+        path = filedialog.askdirectory()
+        if path: self.input_var.set(path)
 
     def _pick_output(self) -> None:
-        folder = filedialog.askdirectory(title="选择输出存档所在文件夹")
-        if folder:
-            self.output_var.set(folder)
+        path = filedialog.askdirectory()
+        if path: self.output_var.set(path)
 
-    def _start_conversion(self) -> None:
+    def _pick_batch_output(self) -> None:
+        path = filedialog.askdirectory()
+        if path: self.batch_output_var.set(path)
+
+    def _add_batch_input(self) -> None:
+        path = filedialog.askdirectory()
+        if path and path not in self._input_paths:
+            self._input_paths.append(path)
+            self.batch_list.insert(tk.END, path)
+
+    def _remove_batch_input(self) -> None:
+        selection = self.batch_list.curselection()
+        for idx in reversed(selection):
+            self.batch_list.delete(idx)
+            del self._input_paths[idx]
+
+    def _clear_batch_inputs(self) -> None:
+        self.batch_list.delete(0, tk.END)
+        self._input_paths.clear()
+
+    def _start_single_conversion(self) -> None:
+        self._initiate_conversion(mode="single")
+
+    def _start_batch_conversion(self) -> None:
+        self._initiate_conversion(mode="batch")
+
+    def _initiate_conversion(self, mode: str) -> None:
         if self._worker and self._worker.is_alive():
             return
 
-        output_path = self.output_var.get().strip()
-        if not output_path:
-            messagebox.showwarning("提示", "请输入输出路径。")
-            return
-
-        is_batch = self.batch_var.get()
-        if is_batch:
-            inputs = list(self.input_listbox.get(0, "end"))
-            if not inputs:
-                messagebox.showwarning("提示", "请添加至少一个输入存档。")
-                return
-        else:
-            input_path = self.input_var.get().strip()
-            if not input_path:
-                messagebox.showwarning("提示", "请输入输入路径。")
-                return
-
-        if not is_batch:
-            output_dir = Path(output_path)
-            if output_dir.exists() and any(output_dir.iterdir()):
-                messagebox.showwarning("提示", "输出路径非空，请选择空目录。")
-                return
-
-        self._clear_log()
-        self.status_var.set("转换中...")
-        self.convert_button.configure(state="disabled")
-
-        mode = "batch" if is_batch else "single"
+        # Common Params
+        direction = self.direction_var.get()
         target_version = self._normalize_version()
         force_repair = self.repair_var.get()
-        direction = self.direction_var.get()
 
-        if mode == "batch":
-            args = (mode, inputs, output_path, direction, target_version, force_repair)
-        else:
-            args = (mode, input_path, output_path, direction, target_version, force_repair)
+        # Mode Specifics
+        if mode == "single":
+            inp = self.input_var.get().strip()
+            out = self.output_var.get().strip()
+            if not inp or not out:
+                Messagebox.show_warning("请填写完整的输入和输出路径。", "输入错误")
+                return
+            
+            out_path = Path(out)
+            if out_path.exists() and any(out_path.iterdir()):
+                confirm = Messagebox.show_question("输出目录非空，可能会覆盖文件。是否继续？", "确认覆盖")
+                if confirm != "Yes": return
+            
+            args = (mode, inp, out, direction, target_version, force_repair)
+            
+        else: # batch
+            if not self._input_paths:
+                Messagebox.show_warning("列表为空，请添加存档。", "输入错误")
+                return
+            out = self.batch_output_var.get().strip()
+            if not out:
+                Messagebox.show_warning("请选择输出根目录。", "输入错误")
+                return
+            
+            args = (mode, self._input_paths, out, direction, target_version, force_repair)
+
+        # UI State Lock
+        self._lock_ui(True)
+        self.log_text.delete("1.0", tk.END)
+        self.status_var.set("正在运行转换任务... | Running...")
 
         self._worker = threading.Thread(
             target=self._run_conversion,
             args=args,
-            daemon=True,
+            daemon=True
         )
         self._worker.start()
+
+    def _lock_ui(self, locked: bool) -> None:
+        state = DISABLED if locked else NORMAL
+        self.btn_convert_single.configure(state=state)
+        self.btn_convert_batch.configure(state=state)
 
     def _run_conversion(
         self,
@@ -237,48 +302,50 @@ class App(ttk.Frame):
         target_version: str | None,
         force_repair: bool,
     ) -> None:
-        if mode == "batch":
-            result = convert_batch(
-                input_paths=input_path,
-                output_root=output_path,
-                direction=direction,
-                target_version=target_version,
-                force_repair=force_repair,
-                log=self._log_queue.put,
-            )
-        else:
-            result = convert_world(
-                input_path=input_path,
-                output_path=output_path,
-                direction=direction,
-                target_version=target_version,
-                force_repair=force_repair,
-                log=self._log_queue.put,
-            )
-        self._result_queue.put(result)
+        try:
+            if mode == "batch":
+                result = convert_batch(
+                    input_paths=input_path, # type: ignore
+                    output_root=output_path,
+                    direction=direction,
+                    target_version=target_version,
+                    force_repair=force_repair,
+                    log=self._log_queue.put,
+                )
+            else:
+                result = convert_world(
+                    input_path=input_path, # type: ignore
+                    output_path=output_path,
+                    direction=direction,
+                    target_version=target_version,
+                    force_repair=force_repair,
+                    log=self._log_queue.put,
+                )
+            self._result_queue.put(result)
+        except Exception as e:
+            self._log_queue.put(f"CRITICAL ERROR: {e}")
+            self._result_queue.put(ConversionResult(False, str(e), [] if mode=="batch" else None))
 
-    def _toggle_batch(self) -> None:
-        if self.batch_var.get():
-            self.single_input_frame.grid_remove()
-            self.batch_input_frame.grid()
-            self.output_label.configure(text="输出根目录")
-        else:
-            self.batch_input_frame.grid_remove()
-            self.single_input_frame.grid()
-            self.output_label.configure(text="目标文件夹")
+    def _poll_queues(self) -> None:
+        while not self._log_queue.empty():
+            msg = self._log_queue.get()
+            self.log_text.insert(tk.END, msg + "\n")
+            self.log_text.see(tk.END)
 
-    def _add_input(self) -> None:
-        folder = filedialog.askdirectory(title="选择输入存档文件夹")
-        if folder and folder not in self.input_listbox.get(0, "end"):
-            self.input_listbox.insert("end", folder)
+        if not self._result_queue.empty():
+            res = self._result_queue.get()
+            self._lock_ui(False)
+            
+            status = "任务完成 | Finished" if res.success else "任务失败 | Failed"
+            self.status_var.set(status)
+            
+            icon = "info" if res.success else "error"
+            title = "成功" if res.success else "失败"
+            Messagebox.show_info(res.message, title=title)
+            
+            self._worker = None
 
-    def _remove_selected(self) -> None:
-        selected = list(self.input_listbox.curselection())
-        for index in reversed(selected):
-            self.input_listbox.delete(index)
-
-    def _clear_inputs(self) -> None:
-        self.input_listbox.delete(0, "end")
+        self.after(100, self._poll_queues)
 
     def _normalize_version(self) -> str | None:
         value = self.version_var.get().strip()
@@ -298,63 +365,17 @@ class App(ttk.Frame):
             versions = []
 
         values = ["最新", *versions]
-        self.version_combo["values"] = values
-        if self.version_var.get() not in values:
-            self.version_var.set("最新")
-
-    def _poll_queues(self) -> None:
-        while True:
-            try:
-                message = self._log_queue.get_nowait()
-            except queue.Empty:
-                break
-            self._append_log(message)
-
-        try:
-            result = self._result_queue.get_nowait()
-        except queue.Empty:
-            result = None
-
-        if result is not None:
-            self._handle_result(result)
-
-        self.after(100, self._poll_queues)
-
-    def _handle_result(self, result: ConversionResult) -> None:
-        self.convert_button.configure(state="normal")
-        if result.success:
-            self.status_var.set("完成")
-            messagebox.showinfo("完成", result.message)
-        else:
-            self.status_var.set("失败")
-            message = result.message
-            if result.details:
-                message += f"\n\n详细信息:\n{result.details}"
-            messagebox.showerror("失败", message)
-
-    def _append_log(self, message: str) -> None:
-        self.log_text.configure(state="normal")
-        self.log_text.insert("end", message + "\n")
-        self.log_text.see("end")
-        self.log_text.configure(state="disabled")
-
-    def _clear_log(self) -> None:
-        self.log_text.configure(state="normal")
-        self.log_text.delete("1.0", "end")
-        self.log_text.configure(state="disabled")
+        self.version_combo['values'] = values
+        self.version_combo.current(0)
 
 
 def main() -> None:
-    root = tk.Tk()
-    style = ttk.Style(root)
-    if "vista" in style.theme_names():
-        style.theme_use("vista")
-    elif "clam" in style.theme_names():
-        style.theme_use("clam")
-    app = App(root)
-    app.pack(fill="both", expand=True)
-    root.mainloop()
+    # Themes: cosmo, flatly, journal, darkly, superhero, solar
+    app = ttk.Window(title="MC World Converter", themename="cosmo")
+    
+    _ = App(app)
+    app.mainloop()
 
-
-if __name__ == "__main__":
-    main()
+i f   _ _ n a m e _ _   = =   " _ _ m a i n _ _ " :  
+         m a i n ( )  
+ 
