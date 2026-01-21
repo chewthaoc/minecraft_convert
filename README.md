@@ -1,4 +1,4 @@
-# 🌍 Minecraft World Converter (存档转换器)
+# 🌍 Minecraft World Converter
 
 <div align="center">
 
@@ -11,9 +11,14 @@
 
 </div>
 
-这是一个基于 Python 和 Tkinter 构建的现代化桌面工具，旨在简化 **Minecraft
-Java版** 与 **基岩版 (Bedrock)** 之间的存档转换流程。核心基于强大的
-[Amulet Core](https://github.com/Amulet-Team/Amulet-Core) 库开发。
+**Language:** [English](#english) | [中文](README.zh-CN.md)
+
+## English
+
+A modern desktop tool built with Python and Tkinter that simplifies world
+conversion between **Minecraft Java Edition** and **Bedrock Edition**. Powered
+by the excellent [Amulet Core](https://github.com/Amulet-Team/Amulet-Core)
+library.
 
 <div align="center">
 
@@ -24,85 +29,86 @@ Java版** 与 **基岩版 (Bedrock)** 之间的存档转换流程。核心基于
 
 ---
 
-## ✨ 主要功能 (Features)
+### ✨ Features
 
-| 功能            | 说明                                              |
-| :-------------- | :------------------------------------------------ |
-| 🔄 **双向转换** | 支持 **Java ↔ Bedrock** 跨平台无缝转换            |
-| 🔀 **版本切换** | 支持同平台版本升降级 (如 Java 1.20 → Java 1.16)   |
-| 📦 **批量处理** | 一键导入多个存档，自动化批量转换                  |
-| 🛠️ **存档修复** | 包含“强制修复”模式，通过重新保存区块修复损坏数据  |
-| 🎯 **版本选择** | 可指定具体的目标游戏版本 (如 `1.20.1`, `1.19` 等) |
-| 🖥️ **图形界面** | 简洁易用的 GUI，无需命令行操作，实时日志显示      |
+| Feature                | Description                                                                  |
+| :--------------------- | :--------------------------------------------------------------------------- |
+| 🔄 **Bidirectional**   | Seamless **Java ↔ Bedrock** world conversion                                |
+| 🔀 **Version Switch**  | Upgrade or downgrade within the same platform (e.g., Java 1.20 → Java 1.16) |
+| 📦 **Batch Processing** | Import multiple worlds and convert them in one run                          |
+| 🛠️ **Repair Mode**     | “Force Repair” re-saves chunks to fix corrupted data                        |
+| 🎯 **Target Version**  | Choose exact versions (e.g., `1.20.1`, `1.19`)                               |
+| 🖥️ **GUI**             | Clean GUI with real-time logs, no CLI required                              |
 
-## 🚀 快速开始 (Quick Start)
+### 🚀 Quick Start
 
-### 直接使用 (Windows)
+#### Windows (Executable)
 
-1. 下载最新发布的 `mcconvert.exe`。
-2. 双击运行程序。
-3. **选择转换模式**：
-   - **单存档模式**：转换单个世界文件夹。
-   - **批量模式**：添加多个世界文件夹，统一输出到指定目录。
-4. **设置参数**：
-   - 选择输入/输出路径。
-   - 选择目标版本（默认“最新”）。
-   - (可选) 勾选“强制修复”以整理区块数据。
-5. 点击 **"开始转换"**。
+1. Download the latest `mcconvert.exe` from Releases.
+2. Double-click to launch.
+3. **Select mode**:
+   - **Single World**: convert one world folder.
+   - **Batch Mode**: add multiple worlds and choose an output directory.
+4. **Configure options**:
+   - Select input/output paths.
+   - Choose target version (default: Latest).
+   - (Optional) enable **Force Repair** to rewrite chunk data.
+5. Click **"Start Convert"**.
 
-## 🛠️ 开发环境搭建 (Development)
+### 🛠️ Development
 
-如果您想参与开发或从源码运行：
+If you want to contribute or run from source:
 
-### 前置要求
+#### Requirements
 
-- Python 3.10 或 3.11 (推荐)
-- Windows 环境 (建议)
+- Python 3.10 or 3.11 (recommended)
+- Windows (recommended)
 
-### 安装步骤
+#### Setup
 
-1. **克隆仓库**
+1. **Clone the repo**
 
    ```bash
-   git clone https://github.com/chewthaocc/minecraft_convert.git
+   git clone https://github.com/chewthaoc/minecraft_convert.git
    cd minecraft_convert
    ```
 
-2. **安装依赖**
+2. **Install dependencies**
 
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **运行代码**
+3. **Run**
    ```bash
    python main.py
    ```
 
-## 📦 打包发布 (Build)
+### 📦 Build
 
-本项目使用 `PyInstaller` 打包为单文件可执行程序。
+This project uses `PyInstaller` to create a single-file executable.
 
 ```bash
 pyinstaller --noconsole --onefile --name mcconvert --paths src --collect-all amulet main.py
 ```
 
-> 打包后的文件位于 `dist/mcconvert.exe`。
+> The output is located at `dist/mcconvert.exe`.
 
-## ⚠️ 注意事项 (Notes)
+### ⚠️ Notes
 
-- **备份**：转换操作属于高风险行为，**请务必在转换前备份您的原始存档！**
-- **版本支持**：目标版本列表依赖于 Amulet 库的更新。如果选择的版本不受支持，工具将尝试使用最接近的兼容版本。
-- **运行库**：如果在其他电脑上运行报错（缺少 DLL），请安装
-  [Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)。
+- **Backup**: Conversion is destructive. **Always back up your worlds first.**
+- **Version Support**: Target versions depend on Amulet updates. If a version is
+  unsupported, the tool will pick the closest compatible option.
+- **Runtime**: If you see DLL errors on another PC, install the
+  [Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170).
 
-## 📝 开源协议
+### 📝 License
 
-MIT License. 本工具基于 Amulet-Core 开发，使用请遵循其开源协议。
+MIT License. Built on top of Amulet-Core.
 
 ---
 
-## 📊 Star History
+### 📊 Star History
 
 <div align="center">
 
@@ -112,10 +118,12 @@ MIT License. 本工具基于 Amulet-Core 开发，使用请遵循其开源协议
 
 ---
 
-## 💖 支持项目
+### 💖 Support
 
-如果这个项目对您有帮助，欢迎：
-- ⭐ 给项目点个 Star
-- 🐛 提交 Issue 反馈问题
-- 🔀 Fork 并提交 Pull Request
-- 📢 分享给更多需要的朋友
+If this project helps you, please consider:
+
+- ⭐ Starring the repo
+- 🐛 Opening an Issue
+- 🔀 Submitting a Pull Request
+- 📢 Sharing it with others
+
