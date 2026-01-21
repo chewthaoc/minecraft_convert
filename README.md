@@ -1,42 +1,88 @@
-# Minecraft 存档转换工具
+# 🌍 Minecraft World Converter (存档转换器)
 
-这是一个基于 Python + Tkinter 的桌面工具，用于在 Java 与 Bedrock 存档之间转换，同时支持同平台版本切换与修复。面向非技术用户，开箱即用。
+![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Python](https://img.shields.io/badge/python-3.11-yellow)
+![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-## 功能
-- 跨平台转换：Bedrock → Java、Java → Bedrock
-- 同平台版本切换：Java → Java、Bedrock → Bedrock
-- 强制修复（重新保存）
-- 批量处理多个存档
-- 目标版本选择
-- 转换日志与错误提示
+这是一个基于 Python 和 Tkinter 构建的现代化桌面工具，旨在简化 **Minecraft
+Java版** 与 **基岩版 (Bedrock)** 之间的存档转换流程。核心基于强大的
+[Amulet Core](https://github.com/Amulet-Team/Amulet-Core) 库开发。
 
-## 使用（已打包 EXE）
-直接运行 dist/mcconvert.exe。
+---
 
-## 使用说明
-1. 选择转换方向。
-2. 选择输入存档（批量模式可添加多个）。
-3. 选择输出目录：
-   - 单个转换：输出目录需为空。
-   - 批量转换：选择输出根目录，工具会自动创建同名子目录。
-4. 选择目标版本（默认“最新”）。
-5. 需要修复时勾选“强制修复(重新保存)”。
-6. 点击“开始转换”。
+## ✨ 主要功能 (Features)
 
-## 常见说明
-- 如果目标平台与源平台一致且未选择版本/修复，将直接复制存档。
-- 目标版本来自 Amulet 内置版本列表；若指定版本不可用，将自动回退为最新版本。
+| 功能            | 说明                                              |
+| :-------------- | :------------------------------------------------ |
+| 🔄 **双向转换** | 支持 **Java ↔ Bedrock** 跨平台无缝转换            |
+| 🔀 **版本切换** | 支持同平台版本升降级 (如 Java 1.20 → Java 1.16)   |
+| 📦 **批量处理** | 一键导入多个存档，自动化批量转换                  |
+| 🛠️ **存档修复** | 包含“强制修复”模式，通过重新保存区块修复损坏数据  |
+| 🎯 **版本选择** | 可指定具体的目标游戏版本 (如 `1.20.1`, `1.19` 等) |
+| 🖥️ **图形界面** | 简洁易用的 GUI，无需命令行操作，实时日志显示      |
 
-## 开发与打包
-### 运行（开发环境）
-1. 安装 Python 3.11。
-2. 安装依赖：`pip install -r requirements.txt`
-3. 启动：`python main.py`
+## 🚀 快速开始 (Quick Start)
 
-### 打包为单文件 EXE
-执行：`pyinstaller --noconsole --onefile --name mcconvert --paths src --collect-all amulet main.py`
+### 直接使用 (Windows)
 
-## 依赖与环境
-- 转换依赖 Amulet，已随 EXE 打包。
-- 如在其他电脑提示缺少系统运行库（如 VCRUNTIME），需先安装对应 Windows 运行库。
-- 若 Amulet 版本不支持转换接口，会在日志中提示错误信息。
+1. 下载最新发布的 `mcconvert.exe`。
+2. 双击运行程序。
+3. **选择转换模式**：
+   - **单存档模式**：转换单个世界文件夹。
+   - **批量模式**：添加多个世界文件夹，统一输出到指定目录。
+4. **设置参数**：
+   - 选择输入/输出路径。
+   - 选择目标版本（默认“最新”）。
+   - (可选) 勾选“强制修复”以整理区块数据。
+5. 点击 **"开始转换"**。
+
+## 🛠️ 开发环境搭建 (Development)
+
+如果您想参与开发或从源码运行：
+
+### 前置要求
+
+- Python 3.10 或 3.11 (推荐)
+- Windows 环境 (建议)
+
+### 安装步骤
+
+1. **克隆仓库**
+
+   ```bash
+   git clone https://github.com/chewthaocc/minecraft_convert.git
+   cd minecraft_convert
+   ```
+
+2. **安装依赖**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **运行代码**
+   ```bash
+   python main.py
+   ```
+
+## 📦 打包发布 (Build)
+
+本项目使用 `PyInstaller` 打包为单文件可执行程序。
+
+```bash
+pyinstaller --noconsole --onefile --name mcconvert --paths src --collect-all amulet main.py
+```
+
+> 打包后的文件位于 `dist/mcconvert.exe`。
+
+## ⚠️ 注意事项 (Notes)
+
+- **备份**：转换操作属于高风险行为，**请务必在转换前备份您的原始存档！**
+- **版本支持**：目标版本列表依赖于 Amulet 库的更新。如果选择的版本不受支持，工具将尝试使用最接近的兼容版本。
+- **运行库**：如果在其他电脑上运行报错（缺少 DLL），请安装
+  [Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)。
+
+## 📝 开源协议
+
+MIT License. 本工具基于 Amulet-Core 开发，使用请遵循其开源协议。
