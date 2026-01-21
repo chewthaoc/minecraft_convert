@@ -365,17 +365,18 @@ class App(ttk.Frame):
             versions = []
 
         values = ["最新", *versions]
-        self.version_combo['values'] = values
+        self.version_combo["values"] = values
+        if self.version_var.get() not in values:
+            self.version_var.set("最新")
         self.version_combo.current(0)
 
 
 def main() -> None:
     # Themes: cosmo, flatly, journal, darkly, superhero, solar
     app = ttk.Window(title="MC World Converter", themename="cosmo")
-    
-    _ = App(app)
+    App(app)
     app.mainloop()
 
-i f   _ _ n a m e _ _   = =   " _ _ m a i n _ _ " :  
-         m a i n ( )  
- 
+
+if __name__ == "__main__":
+    main()
